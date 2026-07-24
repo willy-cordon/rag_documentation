@@ -1,14 +1,12 @@
 .env
 .env.*
 !.env.example
-.tools/
-graphify-out/cost.json
-graphify-out/cache/
-__pycache__/
-*.py[cod]
-.pytest_cache/
+.git/
 .venv/
 venv/
+.tools/
+__pycache__/
+.pytest_cache/
 .mypy_cache/
 .ruff_cache/
 node_modules/
@@ -38,5 +36,4 @@ models/
 *.pfx
 secrets/
 backups/
-.idea/
-.vscode/
+graphify-out/

@@ -1,0 +1,246 @@
+{
+  "communities": {
+    "0": [
+      "app_api_documents",
+      "app_api_documents_index_documents",
+      "app_api_documents_py_chatrequest",
+      "app_api_documents_rag_chat",
+      "app_api_documents_rationale_19",
+      "app_api_documents_rationale_36",
+      "app_main",
+      "app_main_health",
+      "app_main_rationale_21",
+      "app_services_ollama_service_ollamamodelnotfounderror",
+      "app_services_ollama_service_ollamaunavailableerror",
+      "app_services_ollama_service_rationale_12",
+      "app_services_ollama_service_rationale_8",
+      "exception",
+      "indexresponse",
+      "ragresponse"
+    ],
+    "1": [
+      "app_config",
+      "app_config_positive_float",
+      "app_config_positive_int",
+      "app_config_rationale_18",
+      "app_config_rationale_6",
+      "app_services_embedding_service",
+      "app_services_embedding_service_embed_text",
+      "app_services_embedding_service_rationale_6",
+      "app_services_ollama_service",
+      "app_services_ollama_service_generate_embedding",
+      "app_services_ollama_service_rationale_71",
+      "app_services_qdrant_service",
+      "app_services_rag_service"
+    ],
+    "2": [
+      "app_services_document_service",
+      "app_services_document_service_chunk_document",
+      "app_services_document_service_documentchunk",
+      "app_services_document_service_rationale_15",
+      "app_services_document_service_rationale_25",
+      "app_services_document_service_rationale_36",
+      "app_services_document_service_rationale_58",
+      "app_services_document_service_rationale_83",
+      "app_services_document_service_read_document",
+      "app_services_document_service_split_into_sections",
+      "app_services_document_service_windows",
+      "app_services_rag_service_index_document",
+      "app_services_rag_service_rationale_29"
+    ],
+    "3": [
+      "app_services_qdrant_service_qdrantservice",
+      "app_services_qdrant_service_qdrantservice_collection_exists",
+      "app_services_qdrant_service_qdrantservice_ensure_collection",
+      "app_services_qdrant_service_qdrantservice_init",
+      "app_services_qdrant_service_qdrantservice_replace_document",
+      "app_services_qdrant_service_qdrantservice_search",
+      "app_services_qdrant_service_rationale_14",
+      "app_services_qdrant_service_rationale_21",
+      "app_services_qdrant_service_rationale_41",
+      "app_services_qdrant_service_rationale_56",
+      "app_services_qdrant_service_rationale_65",
+      "pointstruct",
+      "scoredpoint"
+    ],
+    "4": [
+      "app_api_chat",
+      "app_api_chat_chat",
+      "app_api_chat_py_chatrequest",
+      "app_api_chat_rationale_13",
+      "app_services_ollama_service_generate_answer",
+      "app_services_ollama_service_rationale_16",
+      "chatresponse"
+    ],
+    "5": [
+      "app_services_ollama_service_generate_text",
+      "app_services_ollama_service_rationale_21",
+      "app_services_rag_service_answer_question",
+      "app_services_rag_service_rationale_59",
+      "source"
+    ],
+    "6": [
+      "app_init",
+      "app_init_rationale_1"
+    ],
+    "7": [
+      "app_services_init",
+      "app_services_init_rationale_1"
+    ],
+    "8": [
+      "app_api_init"
+    ]
+  },
+  "cohesion": {
+    "0": 0.16666666666666666,
+    "1": 0.23076923076923078,
+    "2": 0.20512820512820512,
+    "3": 0.16666666666666666,
+    "4": 0.3333333333333333,
+    "5": 0.4,
+    "6": 1.0,
+    "7": 1.0,
+    "8": 1.0
+  },
+  "gods": [
+    {
+      "id": "app_services_ollama_service_ollamaunavailableerror",
+      "label": "OllamaUnavailableError",
+      "degree": 9
+    },
+    {
+      "id": "app_services_ollama_service_ollamamodelnotfounderror",
+      "label": "OllamaModelNotFoundError",
+      "degree": 9
+    },
+    {
+      "id": "app_api_documents_rag_chat",
+      "label": "rag_chat()",
+      "degree": 7
+    },
+    {
+      "id": "app_services_document_service_chunk_document",
+      "label": "chunk_document()",
+      "degree": 7
+    },
+    {
+      "id": "app_services_ollama_service_generate_text",
+      "label": "generate_text()",
+      "degree": 7
+    },
+    {
+      "id": "app_services_qdrant_service_qdrantservice",
+      "label": "QdrantService",
+      "degree": 7
+    },
+    {
+      "id": "app_services_rag_service_index_document",
+      "label": "index_document()",
+      "degree": 7
+    },
+    {
+      "id": "app_services_rag_service_answer_question",
+      "label": "answer_question()",
+      "degree": 7
+    },
+    {
+      "id": "app_api_documents_index_documents",
+      "label": "index_documents()",
+      "degree": 6
+    },
+    {
+      "id": "app_services_embedding_service_embed_text",
+      "label": "embed_text()",
+      "degree": 6
+    }
+  ],
+  "surprises": [
+    {
+      "source": "index_documents()",
+      "target": "OllamaModelNotFoundError",
+      "source_files": [
+        "app/api/documents.py",
+        "app/services/ollama_service.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source"
+    },
+    {
+      "source": "index_documents()",
+      "target": "OllamaUnavailableError",
+      "source_files": [
+        "app/api/documents.py",
+        "app/services/ollama_service.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source"
+    },
+    {
+      "source": "index_documents()",
+      "target": "index_document()",
+      "source_files": [
+        "app/api/documents.py",
+        "app/services/rag_service.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "rag_chat()",
+      "target": "OllamaModelNotFoundError",
+      "source_files": [
+        "app/api/documents.py",
+        "app/services/ollama_service.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source"
+    },
+    {
+      "source": "rag_chat()",
+      "target": "OllamaUnavailableError",
+      "source_files": [
+        "app/api/documents.py",
+        "app/services/ollama_service.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "indirect_call",
+      "why": "inferred connection - not explicitly stated in source"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `QdrantService` connect `Community 3` to `Community 1`?",
+      "why": "High betweenness centrality (0.282) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `chunk_document()` connect `Community 2` to `Community 1`?",
+      "why": "High betweenness centrality (0.093) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `answer_question()` connect `Community 5` to `Community 0`, `Community 1`?",
+      "why": "High betweenness centrality (0.080) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 2 inferred relationships involving `OllamaUnavailableError` (e.g. with `index_documents()` and `rag_chat()`) actually correct?",
+      "why": "`OllamaUnavailableError` has 2 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 2 inferred relationships involving `OllamaModelNotFoundError` (e.g. with `index_documents()` and `rag_chat()`) actually correct?",
+      "why": "`OllamaModelNotFoundError` has 2 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 2 inferred relationships involving `rag_chat()` (e.g. with `OllamaModelNotFoundError` and `OllamaUnavailableError`) actually correct?",
+      "why": "`rag_chat()` has 2 INFERRED edges - model-reasoned connections that need verification."
+    }
+  ]
+}

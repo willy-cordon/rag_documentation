@@ -128,6 +128,10 @@ docker compose down
 
 El volumen `qdrant_storage` conserva los datos. Usá `docker compose down -v` únicamente si querés eliminar también la colección persistida.
 
+## Graphify
+
+La documentacion del grafo local, sus exclusiones, consultas y actualizacion esta en [`docs/graphify.md`](docs/graphify.md). Graphify es una herramienta auxiliar de desarrollo y no forma parte de las dependencias ni del arranque productivo de FastAPI.
+
 ## Licencia y alcance
 
 El manual incluido es ficticio y está pensado para pruebas técnicas del flujo RAG. No representa instrucciones reales de un municipio ni integra pasarelas de pago o sistemas externos.
