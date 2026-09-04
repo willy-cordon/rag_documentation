@@ -32,18 +32,48 @@ Python local no es necesario para ejecutar la API, porque las dependencias se in
 
 ## Instalación
 
-Desde esta carpeta (`labs`):
+Antes de comenzar, verificá que Docker Desktop esté iniciado y que Ollama responda en el equipo host:
+
+```powershell
+docker version
+docker compose version
+ollama list
+Invoke-RestMethod http://localhost:11434/api/tags
+```
+
+Desde la raíz de este repositorio, ejecutá en PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ollama pull llama3.2:latest
 ollama pull nomic-embed-text
-docker compose config
+docker compose config --quiet
 docker compose up -d --build
 docker compose ps
+Invoke-RestMethod http://localhost:8000/health
 ```
 
-Ollama debe estar ejecutándose en Windows. No hace falta ejecutar `ollama serve` si ya está activo como aplicación. La URL predeterminada `http://host.docker.internal:11434` permite acceder a Ollama desde el contenedor.
+En Bash, Git Bash o WSL, el flujo equivalente es:
+
+```bash
+cp .env.example .env
+ollama pull llama3.2:latest
+ollama pull nomic-embed-text
+docker compose config --quiet
+docker compose up -d --build
+docker compose ps
+curl -fsS http://localhost:8000/health
+```
+
+El estado esperado para `fastapi` y `qdrant` es `healthy`. Swagger queda disponible en [http://localhost:8000/docs](http://localhost:8000/docs).
+
+Ollama debe ejecutarse en el equipo host, no dentro de este Compose. En Windows no hace falta ejecutar `ollama serve` si la aplicación de Ollama ya está activa. La URL predeterminada `http://host.docker.internal:11434` permite que FastAPI acceda al servicio del host desde Docker Desktop.
+
+La primera indexación descarga o carga el modelo de embeddings, y la primera consulta carga el modelo generativo en memoria. En equipos sin GPU estos pasos pueden tardar más que las ejecuciones siguientes. Si la primera consulta supera 120 segundos, aumentá `OLLAMA_TIMEOUT` a `180` o `300` en `.env` y recreá FastAPI:
+
+```powershell
+docker compose up -d --force-recreate fastapi
+```
 
 ## Configuración
 
@@ -118,7 +148,58 @@ docker compose logs -f qdrant
 Invoke-RestMethod http://localhost:6333/collections | ConvertTo-Json -Depth 5
 ```
 
-Si aparece un error de modelo, verificá `ollama list` y que los nombres de `.env` coincidan con los modelos instalados. Si la API no conecta con Ollama, confirmá que Ollama esté activo y que `OLLAMA_URL` sea accesible desde Docker.
+### Problemas frecuentes
+
+#### Falta el archivo `.env`
+
+Si Compose muestra `env file .../.env not found`, crealo desde el ejemplo y validá nuevamente la configuración:
+
+```powershell
+Copy-Item .env.example .env
+docker compose config --quiet
+```
+
+#### FastAPI no puede conectarse con Ollama
+
+Primero comprobá Ollama desde el host:
+
+```powershell
+Invoke-RestMethod http://localhost:11434/api/tags
+ollama list
+```
+
+Después comprobá la misma conexión desde el contenedor:
+
+```powershell
+docker compose exec fastapi python -c "import urllib.request; print(urllib.request.urlopen('http://host.docker.internal:11434/api/tags', timeout=5).status)"
+```
+
+El resultado esperado es `200`. Si falla, confirmá que Ollama esté iniciado, que el firewall permita la conexión desde Docker y que `OLLAMA_URL` coincida con el entorno. En Linux sin Docker Desktop, Ollama también debe escuchar en una interfaz accesible desde el contenedor; no lo expongas fuera de una red confiable.
+
+#### El modelo configurado no existe
+
+Ejecutá `ollama list` y compará los nombres con `OLLAMA_MODEL` y `OLLAMA_EMBEDDING_MODEL` en `.env`. Para instalar los valores predeterminados:
+
+```powershell
+ollama pull llama3.2:latest
+ollama pull nomic-embed-text
+```
+
+#### La instalación de Python falla por certificados
+
+Si el build muestra `CERTIFICATE_VERIFY_FAILED` o `EE certificate key too weak`, normalmente hay un proxy corporativo, antivirus o inspección HTTPS reemplazando el certificado de PyPI. Actualizá esa herramienta para que emita certificados con una clave segura, instalá la CA corporativa en Docker o excluí `pypi.org` y `files.pythonhosted.org` de la inspección HTTPS según la política de tu organización. No desactives la validación TLS ni agregues `--trusted-host` como solución permanente.
+
+#### Advertencia de compatibilidad de Qdrant
+
+El Compose usa `qdrant/qdrant:latest`. Si el servidor avanza más rápido que `qdrant-client`, puede aparecer una advertencia de diferencia de versiones aunque el servicio funcione. Para despliegues reproducibles, fijá la imagen de Qdrant a una versión compatible con el cliente declarado en `requirements.txt`, o actualizá ambos componentes y repetí las pruebas de indexación y búsqueda.
+
+Después de corregir un problema, revisá el estado y los logs:
+
+```powershell
+docker compose ps
+docker compose logs --tail=100 fastapi
+docker compose logs --tail=100 qdrant
+```
 
 Detener los servicios:
 
