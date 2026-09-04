@@ -1,5 +1,5 @@
 services:
-  # API FastAPI que coordina Ollama, el procesamiento documental y Qdrant.
+  # API FastAPI que coordina inferencia, procesamiento documental y Qdrant.
   fastapi:
     build:
       context: .
@@ -12,12 +12,12 @@ services:
       - ./documents:/app/documents:ro
     ports:
       - "8000:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    # La API espera a que Qdrant esté saludable antes de iniciar.
+    # La API sólo inicia cuando la base está lista y los modelos ya existen.
     depends_on:
       qdrant:
         condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -25,9 +25,42 @@ services:
       timeout: 5s
       retries: 5
 
+  # Runtime de inferencia aislado. No publica 11434 hacia el host: solamente
+  # los servicios de esta red Docker pueden acceder a sus modelos.
+  ollama:
+    image: ollama/ollama:0.30.4
+    container_name: parking-ai-ollama
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # Job idempotente: descarga modelos sólo cuando faltan y termina. FastAPI
+  # espera su finalización para no aceptar tráfico con modelos incompletos.
+  ollama-init:
+    image: ollama/ollama:0.30.4
+    container_name: parking-ai-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      GENERATION_MODEL: ${GENERATION_MODEL:-llama3.2:latest}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        ollama pull "$${GENERATION_MODEL}" &&
+        ollama pull "$${EMBEDDING_MODEL}"
+    restart: "no"
+
   # Base vectorial persistente para embeddings y metadatos de los chunks.
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.19.1
     container_name: parking-ai-qdrant
     ports:
       - "6333:6333"
@@ -44,3 +77,4 @@ services:
 
 volumes:
   qdrant_storage:
+  ollama_models:

@@ -10,23 +10,23 @@
     "semantic_hash": ""
   },
   "app/api/chat.py": {
-    "mtime": 1788482030.4585228,
-    "ast_hash": "f3791a309ca4ec2d637035d80bf0a332",
+    "mtime": 1788481100.1608913,
+    "ast_hash": "5bb2632813d151718a3ae6f2d032bd6b",
     "semantic_hash": ""
   },
   "app/api/documents.py": {
-    "mtime": 1788482030.4269457,
-    "ast_hash": "de19946dc3240593f9f7bf152379232b",
+    "mtime": 1788481132.9814236,
+    "ast_hash": "dd4b275f3d455a71e012e14f292914c1",
     "semantic_hash": ""
   },
   "app/config.py": {
-    "mtime": 1788482036.5028913,
-    "ast_hash": "f28aaabec2136529158dec511a7074dc",
+    "mtime": 1788481212.372423,
+    "ast_hash": "422fe7418a06efacdc416d799b316d5c",
     "semantic_hash": ""
   },
   "app/main.py": {
-    "mtime": 1788482036.5021265,
-    "ast_hash": "90947ffe06281e05a91333b47286e637",
+    "mtime": 1788481133.0606349,
+    "ast_hash": "aacb91af3bf5301dcd7492559836ff63",
     "semantic_hash": ""
   },
   "app/services/__init__.py": {
@@ -40,23 +40,23 @@
     "semantic_hash": ""
   },
   "app/services/embedding_service.py": {
-    "mtime": 1788481999.0095265,
-    "ast_hash": "79b5087df2529663557272640f48f5df",
+    "mtime": 1788481100.0195844,
+    "ast_hash": "ee20d0065ab3cbfc93c048313a88d9e7",
     "semantic_hash": ""
   },
   "app/services/ollama_service.py": {
-    "mtime": 1788482036.5021265,
-    "ast_hash": "f35f2e8d6c8b194981654727c2cd263a",
+    "mtime": 1788481099.970945,
+    "ast_hash": "2abded459fad4f250c7327671dd18a29",
     "semantic_hash": ""
   },
   "app/services/qdrant_service.py": {
-    "mtime": 1788482036.5028913,
-    "ast_hash": "ada955295f326fce943ab786f45b881c",
+    "mtime": 1788481212.4067068,
+    "ast_hash": "05dac4ef13147b03a394d8af25146282",
     "semantic_hash": ""
   },
   "app/services/rag_service.py": {
-    "mtime": 1788482036.5034258,
-    "ast_hash": "a26705c57b01134ee3d122ef170fa445",
+    "mtime": 1788481100.091344,
+    "ast_hash": "4d25efa5ac8c85d0806f679515cfcdf1",
     "semantic_hash": ""
   },
   "app/services/inference.py": {
@@ -90,8 +90,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1788481977.4463935,
-    "ast_hash": "ece53fdb663d807bb1a887e111019a6b",
+    "mtime": 1788481339.7708225,
+    "ast_hash": "aceee68572231a84caab36e9c9ee43cd",
     "semantic_hash": ""
   },
   "arquitectura-rag.html": {
@@ -100,8 +100,8 @@
     "semantic_hash": ""
   },
   "docker-compose.yml": {
-    "mtime": 1788481997.4859495,
-    "ast_hash": "d2cd695fc989a0a020cba0762d7bedb9",
+    "mtime": 1788481186.3015347,
+    "ast_hash": "85c41ffecd7c4b24375c2c64429cfd16",
     "semantic_hash": ""
   },
   "docs/graphify.md": {
@@ -115,8 +115,8 @@
     "semantic_hash": ""
   },
   "requirements.txt": {
-    "mtime": 1788481997.52371,
-    "ast_hash": "b1d27fd3c1fa36600fa76b7c5e34c630",
+    "mtime": 1788481186.3913193,
+    "ast_hash": "2ec79ce93f49d642f960fd74b4cb28ef",
     "semantic_hash": ""
   }
 }

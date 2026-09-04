@@ -2,15 +2,16 @@
 import asyncio
 import logging
 import time
+from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
 from qdrant_client.http import models
 
-from app.config import RAG_TOP_K
+from app.config import EMBEDDING_FINGERPRINT, RAG_TOP_K
 from app.models.responses import Source
 from app.services.document_service import chunk_document, read_document
 from app.services.embedding_service import embed_text
-from app.services.ollama_service import generate_text
+from app.services.inference_service import generate_text
 from app.services.qdrant_service import qdrant_service
 
 logger = logging.getLogger(__name__)
@@ -46,12 +47,20 @@ async def index_document(document_name: str) -> tuple[int, int]:
                 "chunk_id": chunk.chunk_id,
                 "title": chunk.title,
                 "page": chunk.page,
+                "embedding_fingerprint": EMBEDDING_FINGERPRINT,
             },
         )
         for chunk, vector in zip(chunks, vectors, strict=True)
     ]
-    await asyncio.to_thread(qdrant_service.replace_document, document_name, points, dimension)
-    logger.info("Document indexed: document=%s chunks=%d dimension=%d", document_name, len(chunks), dimension)
+    await asyncio.to_thread(
+        qdrant_service.replace_document, document_name, points, dimension
+    )
+    logger.info(
+        "Document indexed: document=%s chunks=%d dimension=%d",
+        document_name,
+        len(chunks),
+        dimension,
+    )
     return len(chunks), dimension
 
 
@@ -63,7 +72,12 @@ async def answer_question(question: str) -> tuple[str, list[Source]]:
     search_started = time.perf_counter()
     results = await asyncio.to_thread(qdrant_service.search, query_vector, RAG_TOP_K)
     search_ms = (time.perf_counter() - search_started) * 1000
-    logger.info("RAG search: question=%r chunks=%d search_ms=%.2f", question, len(results), search_ms)
+    logger.info(
+        "RAG search: question=%r chunks=%d search_ms=%.2f",
+        question,
+        len(results),
+        search_ms,
+    )
     if not results:
         return (
             "No encuentro información suficiente en la documentación disponible.",
@@ -79,9 +93,15 @@ async def answer_question(question: str) -> tuple[str, list[Source]]:
         document = str(payload.get("document", "desconocido"))
         section = str(payload.get("section", "desconocida"))
         chunk_id = str(payload.get("chunk_id", result.id))
-        logger.info("RAG result: score=%.4f document=%s section=%s", score, document, section)
-        context_parts.append(f"[Documento: {document} | Sección: {section} | Chunk: {chunk_id}]\n{payload.get('text', '')}")
-        sources.append(Source(document=document, section=section, chunk_id=chunk_id, score=score))
+        logger.info(
+            "RAG result: score=%.4f document=%s section=%s", score, document, section
+        )
+        context_parts.append(
+            f"[Documento: {document} | Sección: {section} | Chunk: {chunk_id}]\n{payload.get('text', '')}"
+        )
+        sources.append(
+            Source(document=document, section=section, chunk_id=chunk_id, score=score)
+        )
 
     # Los separadores ayudan al modelo a distinguir cada fragmento recuperado.
     context = "\n\n---\n\n".join(context_parts)

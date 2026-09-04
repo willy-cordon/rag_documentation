@@ -1,8 +1,7 @@
-# Se reutiliza la integración centralizada con Ollama.
-from app.services.ollama_service import generate_embedding
+# Esta fachada mantiene al RAG independiente del proveedor concreto.
+from app.services.inference_service import generate_embedding
 
 
 async def embed_text(text: str) -> list[float]:
-    """Genera un vector semántico para un texto usando Ollama."""
-    # Mantener esta función separada facilita cambiar el proveedor en el futuro.
+    """Genera un vector semántico mediante el proveedor configurado."""
     return await generate_embedding(text)

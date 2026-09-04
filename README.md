@@ -1,218 +1,178 @@
 # RAG Documentation API
 
-MVP de una API para consultar documentación propia mediante RAG (Retrieval-Augmented Generation). El ejemplo utiliza un manual ficticio del sistema de Estacionamiento Medido, pero la arquitectura puede adaptarse a otros documentos Markdown.
-
-La aplicación recibe una pregunta, busca los fragmentos más relevantes en Qdrant y le entrega ese contexto a un modelo local de Ollama. La respuesta incluye las fuentes recuperadas para facilitar la trazabilidad.
+Demo de una API RAG para consultar documentación Markdown. FastAPI indexa el documento, Qdrant conserva sus vectores y un servicio de inferencia genera embeddings y respuestas fundamentadas.
 
 ## Arquitectura
 
 ```text
-Cliente / Swagger
-        |
-        v
-FastAPI (Docker :8000)
-        |-- /chat ----------------> Ollama: generación directa
-        |-- /documents/index ------> lectura -> chunks -> embeddings -> Qdrant
-        `-- /rag/chat -------------> embedding -> búsqueda -> contexto -> Ollama
-
-Qdrant (Docker :6333/:6334)
-Ollama (host local :11434)
+Cliente / Swagger (:8000)
+            |
+         FastAPI
+       /      |       \
+ generación  embeddings  búsqueda vectorial
+       \      |       /
+        Ollama       Qdrant
+       (Docker)      (Docker)
 ```
 
-No se utilizan LangChain, LlamaIndex ni otra base vectorial. El flujo está implementado directamente con FastAPI, `httpx` y `qdrant-client`.
+Los componentes se ejecutan en contenedores separados. FastAPI usa un contrato con operaciones `generate()` y `embed()`, no el runtime directamente. La demo implementa ese contrato con Ollama; otro adaptador puede incorporarse después sin reescribir indexación o consultas.
+
+Los modelos no están en la imagen de FastAPI ni en Git. `ollama-init` los descarga en el volumen `ollama_models`; Qdrant persiste sus colecciones en `qdrant_storage`.
+
+- [Flujo completo de la aplicación](FLUJO_APLICACION.md)
+- [Diagrama visual de arquitectura](arquitectura-rag.html)
+
+## Flujos principales
+
+1. **`POST /documents/index`**: lee el manual, genera chunks y embeddings y los guarda en Qdrant.
+2. **`POST /rag/chat`**: vectoriza la pregunta, recupera chunks y genera una respuesta usando ese contexto.
+3. **`POST /chat`**: genera una respuesta directa, sin consultar Qdrant.
+4. **`GET /health`**: confirma que FastAPI está vivo.
+5. **`GET /ready`**: comprueba Qdrant, inferencia y ambos modelos.
 
 ## Requisitos
 
-- Docker Desktop con Docker Compose.
-- Ollama instalado y ejecutándose en el equipo host.
-- Modelo de generación: `llama3.2:latest` (configurable).
-- Modelo de embeddings: `nomic-embed-text` (configurable).
+- Docker Desktop o Docker Engine con Docker Compose v2.
+- Espacio para imágenes, modelos y vectores.
+- Internet durante el primer arranque.
 
-Python local no es necesario para ejecutar la API, porque las dependencias se instalan dentro de Docker.
+No hace falta instalar Python ni Ollama en el host. La configuración predeterminada funciona por CPU; la primera inferencia puede tardar varios minutos sin GPU.
 
 ## Instalación
 
-Antes de comenzar, verificá que Docker Desktop esté iniciado y que Ollama responda en el equipo host:
-
-```powershell
-docker version
-docker compose version
-ollama list
-Invoke-RestMethod http://localhost:11434/api/tags
-```
-
-Desde la raíz de este repositorio, ejecutá en PowerShell:
+### PowerShell
 
 ```powershell
 Copy-Item .env.example .env
-ollama pull llama3.2:latest
-ollama pull nomic-embed-text
 docker compose config --quiet
 docker compose up -d --build
-docker compose ps
-Invoke-RestMethod http://localhost:8000/health
+docker compose ps -a
+Invoke-RestMethod http://localhost:8000/ready
 ```
 
-En Bash, Git Bash o WSL, el flujo equivalente es:
+### Bash, Git Bash o WSL
 
 ```bash
 cp .env.example .env
-ollama pull llama3.2:latest
-ollama pull nomic-embed-text
 docker compose config --quiet
 docker compose up -d --build
-docker compose ps
-curl -fsS http://localhost:8000/health
+docker compose ps -a
+curl -fsS http://localhost:8000/ready
 ```
 
-El estado esperado para `fastapi` y `qdrant` es `healthy`. Swagger queda disponible en [http://localhost:8000/docs](http://localhost:8000/docs).
+En el primer arranque, `ollama-init` descarga `llama3.2:latest` y `nomic-embed-text`. Debe finalizar como `Exited (0)`. `fastapi`, `ollama` y `qdrant` deben quedar `healthy`.
 
-Ollama debe ejecutarse en el equipo host, no dentro de este Compose. En Windows no hace falta ejecutar `ollama serve` si la aplicación de Ollama ya está activa. La URL predeterminada `http://host.docker.internal:11434` permite que FastAPI acceda al servicio del host desde Docker Desktop.
+Swagger: [http://localhost:8000/docs](http://localhost:8000/docs). Qdrant: [http://localhost:6333/dashboard](http://localhost:6333/dashboard).
 
-La primera indexación descarga o carga el modelo de embeddings, y la primera consulta carga el modelo generativo en memoria. En equipos sin GPU estos pasos pueden tardar más que las ejecuciones siguientes. Si la primera consulta supera 120 segundos, aumentá `OLLAMA_TIMEOUT` a `180` o `300` en `.env` y recreá FastAPI:
+## Configuración
+
+| Variable | Uso | Predeterminado |
+|---|---|---|
+| `INFERENCE_PROVIDER` | Adaptador activo | `ollama` |
+| `GENERATION_BASE_URL` | Endpoint de generación | `http://ollama:11434` |
+| `GENERATION_MODEL` | Modelo generativo | `llama3.2:latest` |
+| `GENERATION_MAX_TOKENS` | Límite de salida | `256` |
+| `EMBEDDING_BASE_URL` | Endpoint de embeddings | `http://ollama:11434` |
+| `EMBEDDING_MODEL` | Modelo de embeddings | `nomic-embed-text` |
+| `EMBEDDING_MODEL_REVISION` | Revisión lógica vectorial | `v1` |
+| `INFERENCE_TIMEOUT` | Timeout de lectura/escritura | `300` |
+| `INFERENCE_CONNECT_TIMEOUT` | Timeout de conexión | `5` |
+| `INFERENCE_MAX_CONNECTIONS` | Máximo de conexiones | `10` |
+| `QDRANT_URL` | URL interna de Qdrant | `http://qdrant:6333` |
+| `QDRANT_COLLECTION` | Prefijo de colección | `estacionamiento_documentation` |
+| `CHUNK_SIZE` | Tamaño aproximado del chunk | `1200` |
+| `CHUNK_OVERLAP` | Solapamiento entre chunks | `200` |
+| `RAG_TOP_K` | Chunks recuperados | `3` |
+
+### Versionado de embeddings
+
+La colección efectiva se llama `estacionamiento_documentation__<huella>`. La huella deriva del proveedor, modelo y revisión. Si cambia `EMBEDDING_MODEL` o `EMBEDDING_MODEL_REVISION`, se utiliza otra colección y hay que ejecutar `/documents/index`. La anterior se conserva para rollback. Así no se mezclan espacios vectoriales incompatibles aunque tengan la misma dimensión.
+
+## Uso
+
+```powershell
+# Indexar
+Invoke-RestMethod -Uri http://localhost:8000/documents/index -Method Post
+
+# Consultar mediante RAG
+$body = @{ question = '¿Cómo doy de alta una persona para controlar autos estacionados?' } | ConvertTo-Json
+Invoke-RestMethod -Uri http://localhost:8000/rag/chat -Method Post -ContentType 'application/json' -Body $body
+
+# Chat directo
+$body = @{ question = 'Explicá qué es un embedding.' } | ConvertTo-Json
+Invoke-RestMethod -Uri http://localhost:8000/chat -Method Post -ContentType 'application/json' -Body $body
+```
+
+## Operación y diagnóstico
+
+```powershell
+docker compose ps -a
+docker compose logs --tail=100 fastapi
+docker compose logs --tail=100 ollama
+docker compose logs ollama-init
+docker compose logs --tail=100 qdrant
+docker compose exec ollama ollama list
+```
+
+### `ollama-init` falla
+
+Revisá su log y, después de corregir conectividad o espacio, repetí:
+
+```powershell
+docker compose run --rm ollama-init
+docker compose up -d fastapi
+```
+
+### `/health` funciona pero `/ready` devuelve 503
+
+`/health` sólo verifica el proceso. `/ready` informa si falta un modelo o no responde una dependencia. Revisá el campo `detail` y los logs indicados.
+
+### Falta la colección vectorial
+
+Ejecutá `POST /documents/index`. También es necesario después de cambiar el modelo o revisión de embeddings.
+
+### Timeout de inferencia
+
+En CPU, la generación puede tardar varios minutos. Si supera el valor configurado, aumentá `INFERENCE_TIMEOUT` en `.env` y recreá FastAPI:
 
 ```powershell
 docker compose up -d --force-recreate fastapi
 ```
 
-## Configuración
+### Certificados durante el build
 
-Editá `.env` para cambiar valores sin modificar el código:
+`CERTIFICATE_VERIFY_FAILED` suele indicar inspección HTTPS corporativa. Instalá la CA corporativa en Docker conforme a la política interna. No desactives TLS ni uses `--trusted-host` permanentemente.
 
-| Variable | Uso | Valor predeterminado |
-|---|---|---|
-| `OLLAMA_URL` | URL de Ollama vista desde Docker | `http://host.docker.internal:11434` |
-| `OLLAMA_MODEL` | Modelo que genera respuestas | `llama3.2:latest` |
-| `OLLAMA_EMBEDDING_MODEL` | Modelo para embeddings | `nomic-embed-text` |
-| `OLLAMA_TIMEOUT` | Timeout HTTP, en segundos | `120` |
-| `OLLAMA_NUM_PREDICT` | Máximo de tokens generados | `256` |
-| `QDRANT_URL` | URL interna de Qdrant | `http://qdrant:6333` |
-| `QDRANT_COLLECTION` | Nombre de la colección vectorial | `estacionamiento_documentation` |
-| `CHUNK_SIZE` | Tamaño aproximado de cada fragmento | `1200` |
-| `CHUNK_OVERLAP` | Solapamiento entre fragmentos | `200` |
-| `RAG_TOP_K` | Cantidad de resultados recuperados | `3` |
+### Docker Hub no responde o muestra `Client.Timeout`
 
-## Uso
-
-Swagger queda disponible en [http://localhost:8000/docs](http://localhost:8000/docs).
-
-Comprobar el estado de la API:
+Comprobá la configuración en **Docker Desktop → Settings → Resources → Proxies**. El proxy de contenedores gobierna todas las descargas realizadas por `docker pull` y Compose. Si la red permite acceso directo, seleccioná `No proxy`; en una red corporativa, configurá el proxy autorizado por la organización. Después de aplicar y reiniciar Docker Desktop, validá:
 
 ```powershell
-Invoke-RestMethod http://localhost:8000/health
+docker pull ollama/ollama:0.30.4
+docker compose up -d --build
 ```
 
-Indexar el documento incluido:
+## Persistencia y limpieza
 
-```powershell
-Invoke-RestMethod -Uri http://localhost:8000/documents/index -Method Post
-```
+`docker compose down` conserva modelos y vectores. `docker compose down -v` elimina ambos volúmenes y obliga a descargar modelos y reindexar; usalo sólo cuando quieras borrar esos datos.
 
-La indexación es repetible: elimina los puntos existentes del documento y los vuelve a insertar con IDs determinísticos.
-
-Consultar la documentación con RAG:
-
-```powershell
-$body = @{ question = '¿Cómo doy de alta una persona para controlar autos estacionados?' } | ConvertTo-Json
-Invoke-RestMethod -Uri http://localhost:8000/rag/chat -Method Post -ContentType 'application/json' -Body $body
-```
-
-La respuesta contiene `question`, `answer` y `sources`. Cada fuente identifica el documento, la sección, el chunk y el score de similitud.
-
-También existe un chat directo, que no consulta Qdrant:
-
-```powershell
-$body = @{ question = 'Explicá qué es un embedding.' } | ConvertTo-Json
-Invoke-RestMethod -Uri http://localhost:8000/chat -Method Post -ContentType 'application/json' -Body $body
-```
-
-## Estructura del proyecto
+## Estructura
 
 ```text
-app/
-  api/       Endpoints HTTP.
-  models/    Modelos de entrada y salida.
-  services/  Lectura, chunking, embeddings, Ollama, Qdrant y RAG.
-documents/  Documentación Markdown que se indexa.
-Dockerfile  Imagen de la API.
-docker-compose.yml  API + Qdrant.
+app/api/                         endpoints HTTP
+app/models/                      contratos de entrada y salida
+app/services/inference.py        contrato independiente del proveedor
+app/services/inference_service.py selección y fachada del proveedor
+app/services/ollama_service.py   adaptador HTTP de Ollama
+app/services/qdrant_service.py   persistencia y búsqueda vectorial
+app/services/rag_service.py      indexación y consulta RAG
+documents/                       documentos indexables
+tests/                           pruebas unitarias
+docker-compose.yml               FastAPI + Ollama + init + Qdrant
 ```
 
-## Operación y diagnóstico
+## Alcance
 
-Dashboard y API de Qdrant: [http://localhost:6333/dashboard](http://localhost:6333/dashboard)
+Es una demo inicial. No incluye autenticación, alta disponibilidad, autoscaling ni un runtime organizacional. El contrato de inferencia deja preparado el límite arquitectónico para una evolución posterior sin agregar esa complejidad ahora.
 
-```powershell
-docker compose logs -f fastapi
-docker compose logs -f qdrant
-Invoke-RestMethod http://localhost:6333/collections | ConvertTo-Json -Depth 5
-```
-
-### Problemas frecuentes
-
-#### Falta el archivo `.env`
-
-Si Compose muestra `env file .../.env not found`, crealo desde el ejemplo y validá nuevamente la configuración:
-
-```powershell
-Copy-Item .env.example .env
-docker compose config --quiet
-```
-
-#### FastAPI no puede conectarse con Ollama
-
-Primero comprobá Ollama desde el host:
-
-```powershell
-Invoke-RestMethod http://localhost:11434/api/tags
-ollama list
-```
-
-Después comprobá la misma conexión desde el contenedor:
-
-```powershell
-docker compose exec fastapi python -c "import urllib.request; print(urllib.request.urlopen('http://host.docker.internal:11434/api/tags', timeout=5).status)"
-```
-
-El resultado esperado es `200`. Si falla, confirmá que Ollama esté iniciado, que el firewall permita la conexión desde Docker y que `OLLAMA_URL` coincida con el entorno. En Linux sin Docker Desktop, Ollama también debe escuchar en una interfaz accesible desde el contenedor; no lo expongas fuera de una red confiable.
-
-#### El modelo configurado no existe
-
-Ejecutá `ollama list` y compará los nombres con `OLLAMA_MODEL` y `OLLAMA_EMBEDDING_MODEL` en `.env`. Para instalar los valores predeterminados:
-
-```powershell
-ollama pull llama3.2:latest
-ollama pull nomic-embed-text
-```
-
-#### La instalación de Python falla por certificados
-
-Si el build muestra `CERTIFICATE_VERIFY_FAILED` o `EE certificate key too weak`, normalmente hay un proxy corporativo, antivirus o inspección HTTPS reemplazando el certificado de PyPI. Actualizá esa herramienta para que emita certificados con una clave segura, instalá la CA corporativa en Docker o excluí `pypi.org` y `files.pythonhosted.org` de la inspección HTTPS según la política de tu organización. No desactives la validación TLS ni agregues `--trusted-host` como solución permanente.
-
-#### Advertencia de compatibilidad de Qdrant
-
-El Compose usa `qdrant/qdrant:latest`. Si el servidor avanza más rápido que `qdrant-client`, puede aparecer una advertencia de diferencia de versiones aunque el servicio funcione. Para despliegues reproducibles, fijá la imagen de Qdrant a una versión compatible con el cliente declarado en `requirements.txt`, o actualizá ambos componentes y repetí las pruebas de indexación y búsqueda.
-
-Después de corregir un problema, revisá el estado y los logs:
-
-```powershell
-docker compose ps
-docker compose logs --tail=100 fastapi
-docker compose logs --tail=100 qdrant
-```
-
-Detener los servicios:
-
-```powershell
-docker compose down
-```
-
-El volumen `qdrant_storage` conserva los datos. Usá `docker compose down -v` únicamente si querés eliminar también la colección persistida.
-
-## Graphify
-
-La documentacion del grafo local, sus exclusiones, consultas y actualizacion esta en [`docs/graphify.md`](docs/graphify.md). Graphify es una herramienta auxiliar de desarrollo y no forma parte de las dependencias ni del arranque productivo de FastAPI.
-
-## Licencia y alcance
-
-El manual incluido es ficticio y está pensado para pruebas técnicas del flujo RAG. No representa instrucciones reales de un municipio ni integra pasarelas de pago o sistemas externos.
+La documentación de Graphify está en [docs/graphify.md](docs/graphify.md).

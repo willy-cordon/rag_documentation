@@ -1,4 +1,5 @@
 # La configuración se toma del entorno para no acoplar el código a Docker o Windows.
+import hashlib
 import os
 
 
@@ -26,14 +27,32 @@ def _positive_int(name: str, default: int) -> int:
     return parsed
 
 
-# ``host.docker.internal`` permite que el contenedor alcance Ollama en Windows.
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434").rstrip("/")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
-OLLAMA_EMBEDDING_MODEL = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
-OLLAMA_TIMEOUT = _positive_float("OLLAMA_TIMEOUT", 120.0)
-OLLAMA_NUM_PREDICT = _positive_int("OLLAMA_NUM_PREDICT", 512)
+# La aplicación depende de contratos de generación y embeddings, no del runtime
+# concreto. En desarrollo ambos endpoints apuntan al contenedor de Ollama.
+INFERENCE_PROVIDER = os.getenv("INFERENCE_PROVIDER", "ollama").strip().lower()
+GENERATION_BASE_URL = os.getenv("GENERATION_BASE_URL", "http://ollama:11434").rstrip(
+    "/"
+)
+GENERATION_MODEL = os.getenv("GENERATION_MODEL", "llama3.2:latest")
+EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "http://ollama:11434").rstrip("/")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
+EMBEDDING_MODEL_REVISION = os.getenv("EMBEDDING_MODEL_REVISION", "v1")
+INFERENCE_TIMEOUT = _positive_float("INFERENCE_TIMEOUT", 300.0)
+INFERENCE_CONNECT_TIMEOUT = _positive_float("INFERENCE_CONNECT_TIMEOUT", 5.0)
+INFERENCE_MAX_CONNECTIONS = _positive_int("INFERENCE_MAX_CONNECTIONS", 10)
+GENERATION_MAX_TOKENS = _positive_int("GENERATION_MAX_TOKENS", 256)
 QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333").rstrip("/")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "estacionamiento_documentation")
 CHUNK_SIZE = _positive_int("CHUNK_SIZE", 1200)
 CHUNK_OVERLAP = _positive_int("CHUNK_OVERLAP", 200)
-RAG_TOP_K = _positive_int("RAG_TOP_K", 4)
+RAG_TOP_K = _positive_int("RAG_TOP_K", 3)
+
+# Un cambio de proveedor, modelo o revisión crea otro espacio vectorial. Esto
+# evita mezclar vectores compatibles en dimensión pero no en significado.
+EMBEDDING_FINGERPRINT = (
+    f"{INFERENCE_PROVIDER}:{EMBEDDING_MODEL}:{EMBEDDING_MODEL_REVISION}"
+)
+EMBEDDING_COLLECTION_SUFFIX = hashlib.sha256(
+    EMBEDDING_FINGERPRINT.encode()
+).hexdigest()[:10]
+QDRANT_EFFECTIVE_COLLECTION = f"{QDRANT_COLLECTION}__{EMBEDDING_COLLECTION_SUFFIX}"

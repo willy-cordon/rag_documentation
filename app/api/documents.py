@@ -5,7 +5,11 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.requests import ChatRequest
 from app.models.responses import IndexResponse, RagResponse
-from app.services.ollama_service import OllamaModelNotFoundError, OllamaUnavailableError
+from app.services.inference import (
+    InferenceModelNotFoundError,
+    InferenceUnavailableError,
+)
+from app.services.qdrant_service import VectorStoreUnavailableError
 from app.services.rag_service import answer_question, index_document
 
 logger = logging.getLogger(__name__)
@@ -20,7 +24,13 @@ async def index_documents() -> IndexResponse:
     try:
         # La lógica pesada vive en el servicio RAG para mantener delgada la API.
         chunks_created, dimension = await index_document(DOCUMENT_NAME)
-    except (FileNotFoundError, ValueError, OllamaModelNotFoundError, OllamaUnavailableError) as exc:
+    except (
+        FileNotFoundError,
+        ValueError,
+        InferenceModelNotFoundError,
+        InferenceUnavailableError,
+        VectorStoreUnavailableError,
+    ) as exc:
         logger.exception("Document indexing failed")
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return IndexResponse(
@@ -38,6 +48,11 @@ async def rag_chat(request: ChatRequest) -> RagResponse:
     try:
         # Primero se recuperan los fragmentos relevantes y luego se consulta al LLM.
         answer, sources = await answer_question(request.question)
-    except (ValueError, OllamaModelNotFoundError, OllamaUnavailableError) as exc:
+    except (
+        ValueError,
+        InferenceModelNotFoundError,
+        InferenceUnavailableError,
+        VectorStoreUnavailableError,
+    ) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return RagResponse(question=request.question, answer=answer, sources=sources)
